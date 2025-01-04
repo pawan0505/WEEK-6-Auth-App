@@ -42,6 +42,7 @@ app.post("/signin", logger, function(req, res) {
     for (let i = 0; i < users.length; i++) {
         if (users[i].username === username && users[i].password === password) {
             foundUser = users[i]
+            break;
         }
     }
 
@@ -52,7 +53,7 @@ app.post("/signin", logger, function(req, res) {
         return 
     } else {
         const token = jwt.sign({
-            username: users[i].username
+            username: foundUser.username
         }, JWT_SECRET);
         res.header("jwt", token);
 
@@ -64,18 +65,43 @@ app.post("/signin", logger, function(req, res) {
     }
 })
 
+// function auth(req, res, next) {
+//     const token = req.headers.token;
+//     const decodedData = jwt.verify(token, JWT_SECRET);
+
+//     if (decodedData.username) {
+//         // req = {status, headers...., username, password, userFirstName, random; ":123123"}
+//         req.username = decodedData.username
+//         next()
+//     } else {
+//         res.json({
+//             message: "You are not logged in"
+//         })
+//     }
+// }
+
 function auth(req, res, next) {
     const token = req.headers.token;
-    const decodedData = jwt.verify(token, JWT_SECRET);
 
-    if (decodedData.username) {
-        // req = {status, headers...., username, password, userFirstName, random; ":123123"}
-        req.username = decodedData.username
-        next()
-    } else {
-        res.json({
-            message: "You are not logged in"
-        })
+    // Check if the token is provided
+    if (!token) {
+        return res.status(401).json({ message: "Token not provided" });
+    }
+
+    try {
+        // Verify the token
+        const decodedData = jwt.verify(token, JWT_SECRET);
+
+        // Attach the username to the request object for further use
+        if (decodedData.username) {
+            req.username = decodedData.username;
+            next();
+        } else {
+            res.status(403).json({ message: "Invalid token" });
+        }
+    } catch (err) {
+        // Handle invalid token errors
+        res.status(403).json({ message: "Invalid or expired token" });
     }
 }
 
@@ -98,4 +124,6 @@ app.get("/me", logger, auth, function(req, res) {
     })
 })
 
-app.listen(3000);
+app.listen(3000, () => {
+    console.log("server is running on port 3000")
+});
